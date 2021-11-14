@@ -1,0 +1,4 @@
+/target
+.direnv/
+rethinkdb_data
+rethinkdb_export_*

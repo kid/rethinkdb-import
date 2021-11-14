@@ -1,0 +1,18 @@
+[package]
+name = "rethinkdb-import"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+futures = "0.3.17"
+glob = "0.3.0"
+mobc-reql = "0.6.3"
+reql = "0.10.3"
+serde_json = "1.0.70"
+tokio = { version = "1.13.0", features = ["macros", "rt-multi-thread", "sync"] }
+tracing = "0.1.29"
+tracing-futures = "0.2.5"
+tracing-subscriber = "0.3.1"
+walkdir = "2.3.2"
