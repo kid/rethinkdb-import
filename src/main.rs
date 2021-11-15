@@ -1,9 +1,9 @@
 #![feature(slice_as_chunks)]
 
-use itertools::Itertools;
+use futures::prelude::*;
 use std::fs::File;
 use std::io::BufReader;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use flate2::bufread::MultiGzDecoder;
 use futures::{future, TryStreamExt};
@@ -59,7 +59,7 @@ async fn restore_path(pool: Pool, dir: &Path) -> reql::Result<()> {
                 .filter_map(Result::ok)
                 .map(|path| {
                     let pool = pool.clone();
-                    tokio::spawn(async move { import_file(pool, &path).await })
+                    tokio::spawn(async move { import_file(pool, path).await })
                 })
                 // .take(1)
                 .collect();
@@ -72,23 +72,27 @@ async fn restore_path(pool: Pool, dir: &Path) -> reql::Result<()> {
 }
 
 #[tracing::instrument(skip(pool))]
-async fn import_file(pool: Pool, file: &Path) -> reql::Result<()> {
-    let table = file.file_stem().and_then(|n| n.to_str());
+async fn import_file(pool: Pool, file: PathBuf) -> reql::Result<()> {
+    let mut session_stream = futures::stream::repeat_with(|| pool.session().into_stream())
+        .flatten()
+        .filter_map(|x| async { x.ok() })
+        .boxed();
+
+    let table = file.file_stem().map(|n| n.to_string_lossy().into_owned());
     let db = file
         .parent()
         .and_then(|n| n.file_stem())
-        .and_then(|n| n.to_str());
+        .map(|n| n.to_string_lossy().into_owned());
 
     match (db, table) {
         (Some(db), Some(table)) => {
             let file = File::open(file)?;
             // let reader = BufReader::new(file);
             let reader = BufReader::with_capacity(64 * 1024, file);
-            let mut reader = MultiGzDecoder::new(reader);
+            let reader = MultiGzDecoder::new(reader);
 
-            // let items: Vec<Value> = serde_json::from_reader(reader)?;
-
-            let conn = pool.session().await?;
+            let conn = session_stream.next().await.unwrap();
+            // let conn = pool.session().await?;
             match r
                 .db_create(db.to_string())
                 .run::<_, Value>(&conn)
@@ -108,75 +112,32 @@ async fn import_file(pool: Pool, file: &Path) -> reql::Result<()> {
                 Ok(_) => info!("table created"),
                 Err(e) => error!("{}", e),
             }
+            drop(conn);
 
-            let mut batch : Vec<Value> = Vec::with_capacity(200);
-            let mut iterator = iter_json_array(reader).map_while(|e| e.ok());
+            futures::stream::iter(
+                iter_json_array(reader).map_while(|e: Result<Value, std::io::Error>| e.ok()),
+            )
+            .chunks(200)
+            .zip(session_stream)
+            .for_each_concurrent(20, |(batch, conn)| {
+                let db = db.clone();
+                let table = table.clone();
+                tokio::spawn(async move {
 
-            loop {
-                batch.clear();
-                // for x in 0..200 {
-                //     // debug!("iterating {}", x);
-                //     match iterator.next() {
-                //         Some(e) => batch.push(e),
-                //         _ => {},
-                //         // None => break,
-                //     }
-                // }
-                batch.extend((0..200).map_while(|_| iterator.next()));
-                // debug!("batch size: {}", batch.len());
-                if batch.is_empty() {
-                    // debug!("done");
-                    break;
-                }
-                let mut query = r
-                    .db(db)
-                    .table(table)
-                    .insert(&batch)
-                    .run::<_, WriteStatus>(&conn);
-                match query.try_next().await {
-                    // Ok(Some(res)) if res.inserted != u32::try_from(batch.len()).unwrap() => {
-                    //     error!("{:?}", res)
-                    // },
-                    Ok(Some(res)) => debug!("inserted {} rows", res.inserted),
-                    Ok(_) => {}
-                    Err(e) => error!("{}", e),
-                }
-            }
-
-            // // let (chunks, remainder) = items.as_chunks::<200>();
-            // // let mut iterator = items.chunks_exact(200);
-            // for batch in &iter_json_array(reader).chunks(200) {
-            //     let batch: Vec<Value> = batch
-            //         .filter_map(|e| e.ok())
-            //         .collect();
-            //     let mut query = r
-            //         .db(db)
-            //         .table(table)
-            //         .insert(batch)
-            //         .run::<_, WriteStatus>(&conn);
-            //     match query.try_next().await {
-            //         // Ok(Some(res)) if res.inserted != u32::try_from(batch.len()).unwrap() => {
-            //         //     error!("{:?}", res)
-            //         // },
-            //         Ok(Some(res)) => debug!("inserted {} rows", res.inserted),
-            //         Ok(_) => {}
-            //         Err(e) => error!("{}", e),
-            //     }
-            // }
-            //
-            // let mut query = r
-            //     .db(db)
-            //     .table(table)
-            //     .insert(remainder.to_vec())
-            //     .run::<_, WriteStatus>(&conn);
-            // match query.try_next().await {
-            //     Ok(Some(res)) if res.inserted != u32::try_from(remainder.len()).unwrap() => {
-            //         error!("{:?}", res);
-            //     },
-            //     Ok(Some(res)) => debug!("inserted {} rows", res.inserted),
-            //     Ok(_) => {},
-            //     Err(e) => error!("{}", e),
-            // }
+                    let mut query = r
+                        .db(db)
+                        .table(table)
+                        .insert(batch)
+                        .run::<_, WriteStatus>(&conn);
+                    match query.try_next().await {
+                        Ok(Some(res)) => debug!("inserted {} rows", res.inserted),
+                        Ok(_) => {}
+                        Err(e) => error!("{}", e),
+                    }
+                })
+                .map(|_| ())
+            })
+            .await;
         }
         _ => {}
     }
