@@ -31,9 +31,10 @@ async fn main() -> reql::Result<()> {
 
     let pool = Pool::builder().max_open(20).build(manager);
 
-    // for db in vec!["foo", "bar", "baz"].iter() {
-    //     drop_database(pool.clone(), db).await?;
-    // }
+    for db in vec!["foo", "bar", "baz"].iter() {
+        drop_database(pool.clone(), db).await?;
+        create_database(pool.clone(), db).await?;
+    }
 
     restore_path(pool.clone(), Path::new(&args[2])).await?;
 
@@ -73,7 +74,7 @@ async fn restore_path(pool: Pool, dir: &Path) -> reql::Result<()> {
 
 #[tracing::instrument(skip(pool))]
 async fn import_file(pool: Pool, file: PathBuf) -> reql::Result<()> {
-    let mut session_stream = futures::stream::repeat_with(|| pool.session().into_stream())
+    let session_stream = futures::stream::repeat_with(|| pool.session().into_stream())
         .flatten()
         .filter_map(|x| async { x.ok() })
         .boxed();
@@ -87,32 +88,10 @@ async fn import_file(pool: Pool, file: PathBuf) -> reql::Result<()> {
     match (db, table) {
         (Some(db), Some(table)) => {
             let file = File::open(file)?;
-            // let reader = BufReader::new(file);
             let reader = BufReader::with_capacity(64 * 1024, file);
             let reader = MultiGzDecoder::new(reader);
 
-            let conn = session_stream.next().await.unwrap();
-            // let conn = pool.session().await?;
-            match r
-                .db_create(db.to_string())
-                .run::<_, Value>(&conn)
-                .try_next()
-                .await
-            {
-                Ok(_) => info!("db created"),
-                Err(e) => error!("{}", e),
-            }
-            match r
-                .db(db.to_string())
-                .table_create(table.to_string())
-                .run::<_, Value>(&conn)
-                .try_next()
-                .await
-            {
-                Ok(_) => info!("table created"),
-                Err(e) => error!("{}", e),
-            }
-            drop(conn);
+            create_table(pool.clone(), &db, &table).await?;
 
             futures::stream::iter(
                 iter_json_array(reader).map_while(|e: Result<Value, std::io::Error>| e.ok()),
@@ -122,11 +101,10 @@ async fn import_file(pool: Pool, file: PathBuf) -> reql::Result<()> {
             .for_each_concurrent(20, |(batch, conn)| {
                 let db = db.clone();
                 let table = table.clone();
-                tokio::spawn(async move {
-
+                async move {
                     let mut query = r
-                        .db(db)
-                        .table(table)
+                        .db(&db)
+                        .table(&table)
                         .insert(batch)
                         .run::<_, WriteStatus>(&conn);
                     match query.try_next().await {
@@ -134,8 +112,7 @@ async fn import_file(pool: Pool, file: PathBuf) -> reql::Result<()> {
                         Ok(_) => {}
                         Err(e) => error!("{}", e),
                     }
-                })
-                .map(|_| ())
+                }
             })
             .await;
         }
@@ -151,6 +128,30 @@ async fn drop_database(pool: Pool, db: &str) -> reql::Result<()> {
 
     match r.db_drop(db).run::<_, Value>(&conn).try_next().await {
         Ok(_) => info!("db dropped"),
+        Err(e) => error!("{}", e),
+    }
+
+    Ok(())
+}
+
+#[tracing::instrument(skip(pool))]
+async fn create_database(pool: Pool, db: &str) -> reql::Result<()> {
+    let conn = pool.session().await?;
+
+    match r.db_create(db).run::<_, Value>(&conn).try_next().await {
+        Ok(_) => info!("db created"),
+        Err(e) => error!("{}", e),
+    }
+
+    Ok(())
+}
+
+#[tracing::instrument(skip(pool))]
+async fn create_table(pool: Pool, db: &str, table: &str) -> reql::Result<()> {
+    let conn = pool.session().await?;
+
+    match r.db(db).table_create(table).run::<_, Value>(&conn).try_next().await {
+        Ok(_) => info!("table created"),
         Err(e) => error!("{}", e),
     }
 
