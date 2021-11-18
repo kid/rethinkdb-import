@@ -27,6 +27,7 @@
             pkgconfig
             exa
             fd
+            ripgrep
             grpc-tools
             rust-bin.nightly.latest.default
           ];

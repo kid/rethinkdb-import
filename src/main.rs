@@ -5,20 +5,19 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
-use flate2::bufread::MultiGzDecoder;
 use futures::{future, TryStreamExt};
 use mobc_reql::{GetSession, Pool, SessionManager};
 use reql::cmd::connect::Options;
 use reql::r;
 use reql::types::WriteStatus;
-use serde_json::{json, Value};
+use serde_json::json;
 use tracing::{debug, error, info, Level};
 
 #[tokio::main]
 #[tracing::instrument]
 async fn main() -> reql::Result<()> {
     tracing_subscriber::fmt::fmt()
-        .with_max_level(Level::DEBUG)
+        .with_max_level(Level::INFO)
         .init();
 
     let args: Vec<String> = std::env::args().collect();
@@ -32,7 +31,7 @@ async fn main() -> reql::Result<()> {
     let pool = Pool::builder().max_open(20).build(manager);
 
     for db in vec!["foo", "bar", "baz"].iter() {
-        drop_database(pool.clone(), db).await?;
+        // drop_database(pool.clone(), db).await?;
         create_database(pool.clone(), db).await?;
     }
 
@@ -51,7 +50,7 @@ async fn main() -> reql::Result<()> {
 #[tracing::instrument(skip(pool))]
 async fn restore_path(pool: Pool, dir: &Path) -> reql::Result<()> {
     match dir
-        .join("**/*.jsongz")
+        .join("**/*.json")
         .to_str()
         .map(|pattern| glob::glob(pattern))
     {
@@ -89,12 +88,12 @@ async fn import_file(pool: Pool, file: PathBuf) -> reql::Result<()> {
         (Some(db), Some(table)) => {
             let file = File::open(file)?;
             let reader = BufReader::with_capacity(64 * 1024, file);
-            let reader = MultiGzDecoder::new(reader);
+            // let reader = MultiGzDecoder::new(reader);
 
             create_table(pool.clone(), &db, &table).await?;
 
             futures::stream::iter(
-                iter_json_array(reader).map_while(|e: Result<Value, std::io::Error>| e.ok()),
+                iter_json_array(reader).map_while(|e: Result<ijson::IValue, std::io::Error>| e.ok()),
             )
             .chunks(200)
             .zip(session_stream)
@@ -126,7 +125,7 @@ async fn import_file(pool: Pool, file: PathBuf) -> reql::Result<()> {
 async fn drop_database(pool: Pool, db: &str) -> reql::Result<()> {
     let conn = pool.session().await?;
 
-    match r.db_drop(db).run::<_, Value>(&conn).try_next().await {
+    match r.db_drop(db).run::<_, ijson::IValue>(&conn).try_next().await {
         Ok(_) => info!("db dropped"),
         Err(e) => error!("{}", e),
     }
@@ -138,7 +137,7 @@ async fn drop_database(pool: Pool, db: &str) -> reql::Result<()> {
 async fn create_database(pool: Pool, db: &str) -> reql::Result<()> {
     let conn = pool.session().await?;
 
-    match r.db_create(db).run::<_, Value>(&conn).try_next().await {
+    match r.db_create(db).run::<_, ijson::IValue>(&conn).try_next().await {
         Ok(_) => info!("db created"),
         Err(e) => error!("{}", e),
     }
@@ -150,7 +149,7 @@ async fn create_database(pool: Pool, db: &str) -> reql::Result<()> {
 async fn create_table(pool: Pool, db: &str, table: &str) -> reql::Result<()> {
     let conn = pool.session().await?;
 
-    match r.db(db).table_create(table).run::<_, Value>(&conn).try_next().await {
+    match r.db(db).table_create(table).run::<_, ijson::IValue>(&conn).try_next().await {
         Ok(_) => info!("table created"),
         Err(e) => error!("{}", e),
     }
@@ -166,7 +165,7 @@ async fn generate_dummy_data(pool: Pool) -> reql::Result<()> {
     for db in names.iter() {
         match r
             .db_create(db.to_string())
-            .run::<_, Value>(&conn)
+            .run::<_, ijson::IValue>(&conn)
             .try_next()
             .await
         {
@@ -188,7 +187,7 @@ async fn generate_dummy_data(pool: Pool) -> reql::Result<()> {
                     match r
                         .db(db.to_string())
                         .table_create(table.to_string())
-                        .run::<_, Value>(&conn)
+                        .run::<_, ijson::IValue>(&conn)
                         .try_next()
                         .await
                     {

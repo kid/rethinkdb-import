@@ -416,6 +416,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ijson"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b96214564d1f12875bd9661b183d8494dd10e373cb693629536fe2f3125e254b"
+dependencies = [
+ "dashmap",
+ "lazy_static",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -851,6 +863,7 @@ dependencies = [
  "flate2",
  "futures",
  "glob",
+ "ijson",
  "itertools",
  "mobc-reql",
  "reql",
