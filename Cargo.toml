@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.51"
 flate2 = "1.0.22"
 futures = "0.3.17"
 glob = "0.3.0"
@@ -14,11 +15,11 @@ itertools = "0.10.1"
 mobc-reql = "0.6.3"
 ql2 = "2.1.1"
 reql = "0.10.3"
-serde = "1.0.130"
+serde = { version = "1.0.130", features = ["derive"] }
 serde_json = "1.0.70"
 structopt = "0.3.25"
 structopt-flags = "0.3.6"
-tokio = { version = "1.13.0", features = ["macros", "rt-multi-thread", "sync"] }
+tokio = { version = "1.13.0", features = ["macros", "rt-multi-thread", "sync", "fs", "io-util"] }
 tracing = "0.1.29"
 tracing-futures = "0.2.5"
 tracing-subscriber = "0.3.1"
