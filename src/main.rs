@@ -1,11 +1,9 @@
 #![feature(slice_as_chunks)]
 
 mod json_utils;
+mod models;
 mod options;
 mod rdb;
-
-use ijson::IValue;
-use serde::{Deserialize, Serialize};
 
 use futures::prelude::*;
 use std::collections::HashMap;
@@ -21,6 +19,7 @@ use reql::*;
 use tokio::io::AsyncReadExt;
 use tracing::{debug, error, info, Level};
 
+use crate::models::*;
 use crate::options::Opt;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 20)]
@@ -44,19 +43,6 @@ async fn main() -> anyhow::Result<()> {
     info!("Done");
 
     Ok(())
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-struct DbInfo {
-    name: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct TableInfo {
-    name: String,
-    db: DbInfo,
-    indexes: Vec<IValue>,
-    primary_key: String,
 }
 
 #[tracing::instrument(skip(pool))]
