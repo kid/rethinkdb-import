@@ -1,5 +1,3 @@
-#![feature(slice_as_chunks)]
-
 mod json_utils;
 mod models;
 mod naive;
