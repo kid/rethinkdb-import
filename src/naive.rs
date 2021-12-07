@@ -16,11 +16,7 @@ use crate::{json_utils, rdb};
 
 #[tracing::instrument(skip(pool))]
 pub(crate) async fn prepare_tables(pool: Pool, dir: &Path) -> anyhow::Result<()> {
-    match dir
-        .join("**/*.info")
-        .to_str()
-        .map(|pattern| glob::glob(pattern))
-    {
+    match dir.join("**/*.info").to_str().map(glob::glob) {
         Some(Ok(paths)) => {
             let tasks: Vec<_> = paths
                 .filter_map(std::result::Result::ok)
@@ -47,20 +43,16 @@ pub(crate) async fn prepare_tables(pool: Pool, dir: &Path) -> anyhow::Result<()>
 
                 future::join_all(tasks).await;
             }
-        }
-        _ => {}
-    }
 
-    Ok(())
+            Ok(())
+        }
+        _ => Err(anyhow::anyhow!("glob pattern did not return anything")),
+    }
 }
 
 #[tracing::instrument(skip(pool))]
-pub(crate) async fn restore_path(pool: Pool, dir: &Path) -> reql::Result<()> {
-    match dir
-        .join("**/*.json(gz)?")
-        .to_str()
-        .map(|pattern| glob::glob(pattern))
-    {
+pub(crate) async fn restore_path(pool: Pool, dir: &Path) -> anyhow::Result<()> {
+    match dir.join("**/*.json(gz)?").to_str().map(glob::glob) {
         Some(Ok(paths)) => {
             let tasks: Vec<_> = paths
                 .filter_map(std::result::Result::ok)
@@ -71,11 +63,11 @@ pub(crate) async fn restore_path(pool: Pool, dir: &Path) -> reql::Result<()> {
                 .collect();
 
             future::join_all(tasks).await;
-        }
-        _ => {}
-    }
 
-    Ok(())
+            Ok(())
+        }
+        _ => Err(anyhow::anyhow!("glob pattern did not return anything")),
+    }
 }
 
 #[tracing::instrument(skip(pool))]
