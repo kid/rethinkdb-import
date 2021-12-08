@@ -52,7 +52,7 @@ pub(crate) async fn prepare_tables(pool: Pool, dir: &Path) -> anyhow::Result<()>
 
 #[tracing::instrument(skip(pool))]
 pub(crate) async fn restore_path(pool: Pool, dir: &Path) -> anyhow::Result<()> {
-    match dir.join("**/*.json(gz)?").to_str().map(glob::glob) {
+    match dir.join("**/*.json*").to_str().map(glob::glob) {
         Some(Ok(paths)) => {
             let tasks: Vec<_> = paths
                 .filter_map(std::result::Result::ok)
