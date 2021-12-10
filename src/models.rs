@@ -1,7 +1,7 @@
 use std::path::Path;
 
-use serde::{Deserialize, Serialize};
 use ijson::IValue;
+use serde::{Deserialize, Serialize};
 use tokio::io::AsyncReadExt;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -13,8 +13,14 @@ pub(crate) struct DbInfo {
 pub(crate) struct TableInfo {
     pub name: String,
     pub db: DbInfo,
-    pub indexes: Vec<IValue>,
+    pub indexes: Vec<IndexInfo>,
     pub primary_key: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub(crate) struct IndexInfo {
+    pub index: String,
+    pub function: IValue,
 }
 
 #[tracing::instrument()]

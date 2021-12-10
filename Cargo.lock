@@ -228,19 +228,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "chrono"
-version = "0.4.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "670ad68c9088c2a963aaa298cb369688cf3f9465ce5e2d4ca10e6e0098a1ce73"
-dependencies = [
- "libc",
- "num-integer",
- "num-traits",
- "time",
- "winapi",
-]
-
-[[package]]
 name = "clap"
 version = "2.33.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -615,25 +602,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
 
 [[package]]
-name = "num-integer"
-version = "0.1.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2cc698a63b549a70bc047073d2949cce27cd1c7b0a4a862d08a8031bc2801db"
-dependencies = [
- "autocfg",
- "num-traits",
-]
-
-[[package]]
-name = "num-traits"
-version = "0.2.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a64b1ec5cda2586e284722486d802acf1f7dbdc623e2bfc57e65ca1cd099290"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
 name = "num_cpus"
 version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -931,9 +899,8 @@ dependencies = [
 
 [[package]]
 name = "reql"
-version = "0.10.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40c5780ccd7d775d37d9d1fa7053fc8993f9ec22379268c7180da6e64a0621e3"
+version = "0.10.4"
+source = "git+https://github.com/kid/rethinkdb-rs?branch=feat/index-create-binary#2bc51a2ff190025ae3083679784bf4358106b228"
 dependencies = [
  "async-net",
  "async-stream",
@@ -951,8 +918,7 @@ dependencies = [
 [[package]]
 name = "reql-macros"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87c5ae88ff96546522eb56ef38cbbdacaa03258166b7335e503d881c288e9d55"
+source = "git+https://github.com/kid/rethinkdb-rs?branch=feat/index-create-binary#2bc51a2ff190025ae3083679784bf4358106b228"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -961,14 +927,13 @@ dependencies = [
 
 [[package]]
 name = "reql-types"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "445628ad251e154dea0576585eb210d21018a0e97b97084a489cc1127aa575ae"
+version = "0.3.2"
+source = "git+https://github.com/kid/rethinkdb-rs?branch=feat/index-create-binary#2bc51a2ff190025ae3083679784bf4358106b228"
 dependencies = [
  "base64",
- "chrono",
  "serde",
  "serde_json",
+ "time",
  "uuid",
 ]
 
@@ -1225,14 +1190,20 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.1.44"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6db9e6914ab8b1ae1c260a4ae7a49b6c5611b40328a735b21862567685e73255"
+checksum = "41effe7cfa8af36f439fac33861b66b049edc6f9a32331e2312660529c1c24ad"
 dependencies = [
+ "itoa",
  "libc",
- "wasi",
- "winapi",
+ "time-macros",
 ]
+
+[[package]]
+name = "time-macros"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25eb0ca3468fc0acc11828786797f6ef9aa1555e4a211a60d64cc8e4d1be47d6"
 
 [[package]]
 name = "tokio"

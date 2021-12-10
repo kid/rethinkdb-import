@@ -1,7 +1,11 @@
+use anyhow::Context;
 use futures::TryStreamExt;
 use mobc_reql::{GetSession, Pool};
+
 use reql::cmd::table_create::Options;
+
 use reql::r;
+use serde_json::json;
 use tracing::{error, info};
 
 use crate::TableInfo;
@@ -59,11 +63,18 @@ pub(crate) async fn create_table(pool: Pool, table: &TableInfo) -> anyhow::Resul
     }
 
     for index in table.indexes.iter() {
-        // let foo = json!({ "foo": "bar" });
+        let data: String = ijson::from_value(index.function.get("data").context("no index data")?)?;
+
         match r
             .db(&table.db.name)
             .table(&table.name)
-            .index_create(serde_json::to_string(&index)?)
+            .index_create(r.args((
+                "foo".to_owned(),
+                json!({
+                    "$reql_type$": "BINARY",
+                    "data": data
+                }),
+            )))
             .run::<_, ijson::IValue>(&conn)
             .try_next()
             .await
