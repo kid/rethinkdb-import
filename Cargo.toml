@@ -16,7 +16,7 @@ mobc-reql = "0.6.3"
 ql2 = "2.1.1"
 reql = "0.10.4"
 serde = { version = "1.0.130", features = ["derive"] }
-serde_json = "1.0.70"
+serde_json = { version = "1.0.70", features = ["arbitrary_precision", "raw_value"] }
 structopt = "0.3.25"
 structopt-flags = "0.3.6"
 tokio = { version = "1.13.0", features = ["macros", "rt-multi-thread", "sync", "fs", "io-util"] }

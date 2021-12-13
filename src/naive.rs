@@ -89,7 +89,7 @@ async fn import_file(pool: Pool, path: PathBuf) -> anyhow::Result<()> {
                 let file = File::open(path)?;
                 let reader = BufReader::with_capacity(64 * 1024, file);
                 let iterator = json_utils::iter_json_array(reader)
-                    .map_while(|e: std::result::Result<ijson::IValue, std::io::Error>| e.ok());
+                    .map_while(|e| e.ok());
 
                 futures::stream::iter(iterator)
                     .chunks(200)
@@ -131,7 +131,7 @@ async fn import_file(pool: Pool, path: PathBuf) -> anyhow::Result<()> {
                 let reader = BufReader::with_capacity(64 * 1024, file);
                 let reader = GzDecoder::new(reader);
                 let iterator = json_utils::iter_json_array(reader)
-                    .map_while(|e: std::result::Result<ijson::IValue, std::io::Error>| e.ok());
+                    .map_while(|e| e.ok());
                 futures::stream::iter(iterator)
                     .chunks(200)
                     .zip(session_stream)

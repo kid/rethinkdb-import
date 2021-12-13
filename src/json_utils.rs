@@ -1,4 +1,4 @@
-use serde::de::DeserializeOwned;
+use serde_json::value::RawValue;
 use serde_json::{self, Deserializer};
 use std::io::{self, Read};
 
@@ -16,18 +16,18 @@ fn invalid_data(msg: &str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, msg)
 }
 
-fn deserialize_single<T: DeserializeOwned, R: Read>(reader: R) -> io::Result<T> {
-    let next_obj = Deserializer::from_reader(reader).into_iter::<T>().next();
+fn deserialize_single<R: Read>(reader: R) -> io::Result<Box<RawValue>> {
+    let next_obj = Deserializer::from_reader(reader).into_iter().next();
     match next_obj {
         Some(result) => result.map_err(Into::into),
         None => Err(invalid_data("premature EOF")),
     }
 }
 
-fn yield_next_obj<T: DeserializeOwned, R: Read>(
+fn yield_next_obj<R: Read>(
     mut reader: R,
     at_start: &mut bool,
-) -> io::Result<Option<T>> {
+) -> io::Result<Option<Box<RawValue>>> {
     if !*at_start {
         *at_start = true;
         if read_skipping_ws(&mut reader)? == b'[' {
@@ -50,9 +50,9 @@ fn yield_next_obj<T: DeserializeOwned, R: Read>(
     }
 }
 
-pub(crate) fn iter_json_array<T: DeserializeOwned, R: Read>(
+pub(crate) fn iter_json_array<R: Read>(
     mut reader: R,
-) -> impl Iterator<Item = std::result::Result<T, io::Error>> {
+) -> impl Iterator<Item = std::result::Result<Box<RawValue>, io::Error>> {
     let mut at_start = false;
     std::iter::from_fn(move || yield_next_obj(&mut reader, &mut at_start).transpose())
 }
