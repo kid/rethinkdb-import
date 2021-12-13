@@ -69,7 +69,7 @@ pub(crate) async fn create_table(pool: Pool, table: &TableInfo) -> anyhow::Resul
             .db(&table.db.name)
             .table(&table.name)
             .index_create(r.args((
-                "foo".to_owned(),
+                index.index.to_owned(),
                 json!({
                     "$reql_type$": "BINARY",
                     "data": data
